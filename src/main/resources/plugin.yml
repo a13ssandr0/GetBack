@@ -1,0 +1,6 @@
+name: GetBack
+main: ac.plugin.GetBack
+version: 1.0.0
+api-version: 1.18.1
+description: Easily come back to your death place
+author: a13ssandr0
