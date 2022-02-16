@@ -1,25 +1,31 @@
 package ac.plugin;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.entity.PlayerDeathEvent;
 
+import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
-public class GetBack extends JavaPlugin implements Listener {
+public class GetBack extends JavaPlugin implements Listener, CommandExecutor {
 
-    public Map<String, int[]> deaths = new HashMap<>();
+    public Map<String, Location> deaths = new HashMap<>();
     public FileConfiguration config = this.getConfig();
 
     @Override
     public void onEnable() {
         super.onEnable();
-        getLogger().info("GetBack enabled");
         getServer().getPluginManager().registerEvents(this, this);
         config.addDefault("deathmessage", "You died. Pathetic... Use /back to teleport back to your death location.");
         config.addDefault("errormessage", "You're not dead, please DIE!!");
@@ -29,9 +35,11 @@ public class GetBack extends JavaPlugin implements Listener {
         String[] dt = Objects.requireNonNull(config.getString("deaths")).split(";");
         for (String item : dt){
             String[] pack = item.split(":");
-            if (pack.length>=3)
-                deaths.put(pack[0], new int[]{Integer.parseInt(pack[1]), Integer.parseInt(pack[2]), Integer.parseInt(pack[3])});
+            if (pack.length==5)
+                deaths.put(pack[0], new Location(getServer().getWorld(UUID.fromString(pack[1])),  Double.parseDouble(pack[2]), Double.parseDouble(pack[3]), Double.parseDouble(pack[4])));
         }
+        Objects.requireNonNull(getCommand("back")).setExecutor(this);
+        getLogger().info("Loaded " + deaths.size() + " death location(s)");
     }
 
     @Override
@@ -43,41 +51,40 @@ public class GetBack extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event){
         event.setDeathMessage(config.getString("deathmessage"));
-        deaths.put(event.getEntity().getDisplayName(), new int[]{
-                (int) Math.round(event.getEntity().getLocation().getX()),
-                (int) Math.round(event.getEntity().getLocation().getY()),
-                (int) Math.round(event.getEntity().getLocation().getZ())
-        });
+        deaths.put(event.getEntity().getDisplayName(), event.getEntity().getLocation());
         config.set("deaths", packMap(deaths));
         saveConfig();
     }
 
-    public String packMap(Map<String, int[]> map){
+    public String packMap(Map<String, Location> map){
         StringBuilder out = new StringBuilder();
-        for (Map.Entry<String, int[]> entry : map.entrySet()){
+        for (Map.Entry<String, Location> entry : map.entrySet()){
             if (out.length()>0) out.append(";");
             out.append(entry.getKey())
-                    .append(":").append(entry.getValue()[0])
-                    .append(":").append(entry.getValue()[1])
-                    .append(":").append(entry.getValue()[2]);
+                    .append(":").append(Objects.requireNonNull(entry.getValue().getWorld()).getUID())
+                    .append(":").append(entry.getValue().getX())
+                    .append(":").append(entry.getValue().getY())
+                    .append(":").append(entry.getValue().getZ());
         }
         return out.toString();
     }
 
-/*    class LocationHolder {
-        int x, y, z;
-        public LocationHolder(int x, int y, int z) {this.x = x; this.y = y; this.z = z; getLogger().info(toString());}
-        public LocationHolder(double x, double y, double z) {
-            new LocationHolder((int) Math.round(x), (int) Math.round(y), (int) Math.round(z));}
-        public LocationHolder(Location location) {
-            new LocationHolder(location.getX(), location.getY(), location.getZ());}
-//        public LocationHolder(String data){
-//            String[] pack = data.split(":");
-//            if (pack.length>=2)
-//                new LocationHolder(Integer.parseInt(pack[0]), Integer.parseInt(pack[1]), Integer.parseInt(pack[2]));
-//        }
-        public String toString(){
-            return x + ":" + y + ":" + z;
+    @Override
+    public boolean onCommand(@Nonnull CommandSender sender, @Nonnull Command command, @Nonnull String label, @Nonnull String[] args) {
+        if (command == getCommand("back")){
+            if (args.length>0) {
+                Player dstPlayer = Objects.requireNonNull(getServer().getPlayer(args[0]));
+                dstPlayer.sendMessage(String.format("Teleporting %s back", dstPlayer.getName()));
+                dstPlayer.teleport(deaths.get(args[0]));
+                return true;
+            } else if (sender instanceof Player) {
+                sender.sendMessage(String.format("Teleporting %s back", sender.getName()));
+                ((Player) sender).teleport(deaths.get(sender.getName()));
+                return true;
+            } else {
+                sender.sendMessage(ChatColor.RED + "Wrong command. Usage:" + ChatColor.RESET);
+            }
         }
-    }*/
+        return false;
+    }
 }
