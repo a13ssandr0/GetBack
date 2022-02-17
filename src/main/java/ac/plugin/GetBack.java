@@ -16,7 +16,6 @@ import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 public class GetBack extends JavaPlugin implements Listener, CommandExecutor {
 
@@ -29,16 +28,11 @@ public class GetBack extends JavaPlugin implements Listener, CommandExecutor {
         getServer().getPluginManager().registerEvents(this, this);
         config.addDefault("deathmessage", "You died. Pathetic... Use /back to teleport back to your death location.");
         config.addDefault("errormessage", "You're not dead, please DIE!!");
-        config.addDefault("deaths", "");
+        config.addDefault("deaths", deaths);
         config.options().copyDefaults(true);
         saveConfig();
-        String[] dt = Objects.requireNonNull(config.getString("deaths")).split(";");
-        for (String item : dt){
-            String[] pack = item.split(":");
-            if (pack.length==5)
-                deaths.put(pack[0], new Location(getServer().getWorld(UUID.fromString(pack[1])),  Double.parseDouble(pack[2]), Double.parseDouble(pack[3]), Double.parseDouble(pack[4])));
-        }
-        Objects.requireNonNull(getCommand("back")).setExecutor(this);
+        Objects.requireNonNull(getConfig().getConfigurationSection("deaths")).getValues(true)
+                .forEach((key, value) -> deaths.put(key, (Location) value));
         getLogger().info("Loaded " + deaths.size() + " death location(s)");
     }
 
@@ -52,21 +46,8 @@ public class GetBack extends JavaPlugin implements Listener, CommandExecutor {
     public void onPlayerDeath(PlayerDeathEvent event){
         event.setDeathMessage(config.getString("deathmessage"));
         deaths.put(event.getEntity().getDisplayName(), event.getEntity().getLocation());
-        config.set("deaths", packMap(deaths));
+        config.set("deaths", deaths);
         saveConfig();
-    }
-
-    public String packMap(Map<String, Location> map){
-        StringBuilder out = new StringBuilder();
-        for (Map.Entry<String, Location> entry : map.entrySet()){
-            if (out.length()>0) out.append(";");
-            out.append(entry.getKey())
-                    .append(":").append(Objects.requireNonNull(entry.getValue().getWorld()).getUID())
-                    .append(":").append(entry.getValue().getX())
-                    .append(":").append(entry.getValue().getY())
-                    .append(":").append(entry.getValue().getZ());
-        }
-        return out.toString();
     }
 
     @Override
