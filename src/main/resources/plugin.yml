@@ -5,6 +5,7 @@ api-version: 1.18
 description: Easily come back to your death place
 author: a13ssandr0
 website: https://github.com/a13ssandr0/GetBack
+load: POSTWORLD
 commands:
   back:
     description: Go back

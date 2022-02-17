@@ -11,6 +11,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import javax.annotation.Nonnull;
 import java.util.HashMap;
@@ -26,14 +27,29 @@ public class GetBack extends JavaPlugin implements Listener, CommandExecutor {
     public void onEnable() {
         super.onEnable();
         getServer().getPluginManager().registerEvents(this, this);
-        config.addDefault("deathmessage", "You died. Pathetic... Use /back to teleport back to your death location.");
-        config.addDefault("errormessage", "You're not dead, please DIE!!");
-        config.addDefault("deaths", deaths);
-        config.options().copyDefaults(true);
-        saveConfig();
-        Objects.requireNonNull(getConfig().getConfigurationSection("deaths")).getValues(true)
-                .forEach((key, value) -> deaths.put(key, (Location) value));
-        getLogger().info("Loaded " + deaths.size() + " death location(s)");
+        if (!config.contains("deathmessage")) {
+            config.set("deathmessage", "You died. Pathetic... Use /back to teleport back to your death location.");
+            saveConfig();
+        }
+        if (!config.contains("errormessage")) {
+            config.set("errormessage", "You're not dead, please DIE!!");
+            saveConfig();
+        }
+        if (!config.contains("deaths")) {
+            config.set("deaths", deaths);
+            saveConfig();
+        } else {
+            // Load deaths 1 tick after the server finished startup
+            // Doing it before would fail because world may not have fully loaded
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    Objects.requireNonNull(getConfig().getConfigurationSection("deaths")).getValues(true)
+                            .forEach((key, value) -> deaths.put(key, (Location) value));
+                    getServer().broadcastMessage("[GetBack] Loaded " + deaths.size() + " death location(s)");
+                }
+            }.runTaskLater(this, 1L);
+        }
     }
 
     @Override
@@ -44,23 +60,36 @@ public class GetBack extends JavaPlugin implements Listener, CommandExecutor {
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event){
-        event.setDeathMessage(config.getString("deathmessage"));
         deaths.put(event.getEntity().getDisplayName(), event.getEntity().getLocation());
         config.set("deaths", deaths);
-        saveConfig();
+        saveConfig(); // saving config here just in case the plugin would crash before onDisable is called
+        event.getEntity().sendMessage("" /*removes NPE warning*/ + config.getString("deathmessage"));
+        // IDE warns about config.getString() returning null,
+        // virtually impossible since its value being present
+        // is checked when loading config in onEnable
     }
 
     @Override
     public boolean onCommand(@Nonnull CommandSender sender, @Nonnull Command command, @Nonnull String label, @Nonnull String[] args) {
         if (command == getCommand("back")){
             if (args.length>0) {
-                Player dstPlayer = Objects.requireNonNull(getServer().getPlayer(args[0]));
-                dstPlayer.sendMessage(String.format("Teleporting %s back", dstPlayer.getName()));
-                dstPlayer.teleport(deaths.get(args[0]));
+                Player dstPlayer = getServer().getPlayer(args[0]);
+                if (dstPlayer == null)
+                    sender.sendMessage(ChatColor.RED + "Player not found" + ChatColor.RESET);
+                else if (!deaths.containsKey(dstPlayer.getName()))
+                    sender.sendMessage(ChatColor.RED + getConfig().getString("errormessage") + ChatColor.RESET);
+                else {
+                    dstPlayer.sendMessage(ChatColor.GREEN + "Teleporting " + ChatColor.BLUE + ChatColor.BOLD + dstPlayer.getName() + ChatColor.RESET + ChatColor.GREEN + " back" + ChatColor.RESET);
+                    dstPlayer.teleport(deaths.get(dstPlayer.getName()));
+                }
                 return true;
             } else if (sender instanceof Player) {
-                sender.sendMessage(String.format("Teleporting %s back", sender.getName()));
-                ((Player) sender).teleport(deaths.get(sender.getName()));
+                if (!deaths.containsKey(sender.getName()))
+                    sender.sendMessage(ChatColor.RED + getConfig().getString("errormessage") + ChatColor.RESET);
+                else {
+                    sender.sendMessage(ChatColor.GREEN + "Teleporting " + ChatColor.BLUE + ChatColor.BOLD + sender.getName() + ChatColor.RESET + ChatColor.GREEN + " back" + ChatColor.RESET);
+                    ((Player) sender).teleport(deaths.get(sender.getName()));
+                }
                 return true;
             } else {
                 sender.sendMessage(ChatColor.RED + "Wrong command. Usage:" + ChatColor.RESET);
