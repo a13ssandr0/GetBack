@@ -10,5 +10,9 @@ Like the original plugin allows you to teleport back to the place where you died
 
 `/back <Player>` Teleport someone (useful for server commands)
 
+`/home` Teleport yourself
+
+`/home <Player>` Teleport someone (useful for server commands)
+
 ### Dependencies
 None
