@@ -72,28 +72,43 @@ public class GetBack extends JavaPlugin implements Listener, CommandExecutor {
     @Override
     public boolean onCommand(@Nonnull CommandSender sender, @Nonnull Command command, @Nonnull String label, @Nonnull String[] args) {
         if (command == getCommand("back")){
-            if (args.length>0) {
-                Player dstPlayer = getServer().getPlayer(args[0]);
-                if (dstPlayer == null)
-                    sender.sendMessage(ChatColor.RED + "Player not found" + ChatColor.RESET);
-                else if (!deaths.containsKey(dstPlayer.getName()))
-                    sender.sendMessage(ChatColor.RED + getConfig().getString("errormessage") + ChatColor.RESET);
-                else {
-                    dstPlayer.sendMessage(ChatColor.GREEN + "Teleporting " + ChatColor.BLUE + ChatColor.BOLD + dstPlayer.getName() + ChatColor.RESET + ChatColor.GREEN + " back" + ChatColor.RESET);
-                    dstPlayer.teleport(deaths.get(dstPlayer.getName()));
-                }
-                return true;
-            } else if (sender instanceof Player) {
-                if (!deaths.containsKey(sender.getName()))
-                    sender.sendMessage(ChatColor.RED + getConfig().getString("errormessage") + ChatColor.RESET);
-                else {
-                    sender.sendMessage(ChatColor.GREEN + "Teleporting " + ChatColor.BLUE + ChatColor.BOLD + sender.getName() + ChatColor.RESET + ChatColor.GREEN + " back" + ChatColor.RESET);
-                    ((Player) sender).teleport(deaths.get(sender.getName()));
-                }
-                return true;
-            } else {
+            Player dstPlayer;
+            if (args.length>0) dstPlayer = getServer().getPlayer(args[0]);
+            else if (sender instanceof Player) dstPlayer = (Player) sender;
+            else {
                 sender.sendMessage(ChatColor.RED + "Wrong command. Usage:" + ChatColor.RESET);
+                return false;
             }
+            if (dstPlayer == null)
+                sender.sendMessage(ChatColor.RED + "Player not found" + ChatColor.RESET);
+            else if (!deaths.containsKey(dstPlayer.getName()))
+                sender.sendMessage(ChatColor.RED + getConfig().getString("errormessage") + ChatColor.RESET);
+            else {
+                String tp_msg = ChatColor.GREEN + "Teleporting " + ChatColor.BLUE + ChatColor.BOLD + dstPlayer.getName() + ChatColor.RESET + ChatColor.GREEN + " back" + ChatColor.RESET;
+                sender.sendMessage(tp_msg);
+                if (sender!=dstPlayer) dstPlayer.sendMessage(tp_msg);
+                dstPlayer.teleport(deaths.get(dstPlayer.getName()));
+            }
+            return true;
+        } else if (command == getCommand("home")){
+            Player dstPlayer;
+            if (args.length>0) dstPlayer = getServer().getPlayer(args[0]);
+            else if (sender instanceof Player) dstPlayer = (Player) sender;
+            else {
+                sender.sendMessage(ChatColor.RED + "Wrong command. Usage:" + ChatColor.RESET);
+                return false;
+            }
+            if (dstPlayer == null)
+                sender.sendMessage(ChatColor.RED + "Player not found" + ChatColor.RESET);
+            else if (dstPlayer.getBedSpawnLocation() == null)
+                sender.sendMessage(ChatColor.RED + "No bed found for " + dstPlayer.getName() + ChatColor.RESET);
+            else {
+                String tp_msg = ChatColor.GREEN + "Teleporting " + ChatColor.BLUE + ChatColor.BOLD + dstPlayer.getName() + ChatColor.RESET + ChatColor.GREEN + " home" + ChatColor.RESET;
+                sender.sendMessage(tp_msg);
+                if (sender!=dstPlayer) dstPlayer.sendMessage(tp_msg);
+                dstPlayer.teleport(dstPlayer.getBedSpawnLocation());
+            }
+            return true;
         }
         return false;
     }

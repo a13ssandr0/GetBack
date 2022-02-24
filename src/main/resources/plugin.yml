@@ -1,6 +1,6 @@
 name: GetBack
 main: ac.plugin.GetBack
-version: 1.0.0
+version: 1.1.0
 api-version: 1.18
 description: Easily come back to your death place
 author: a13ssandr0
@@ -8,5 +8,10 @@ website: https://github.com/a13ssandr0/GetBack
 load: POSTWORLD
 commands:
   back:
-    description: Go back
+    description: Go back to where you died
     usage: /back [<Player>]
+  home:
+    description: Go back to the last bed where you slept
+    usage: /home [<Player>]
+    aliases:
+      - backhome
